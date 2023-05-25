@@ -1,0 +1,91 @@
+# Set working directory
+setwd("/media/goutham/B/D26/")
+
+# Load DESeq2 library
+library(DESeq2)
+
+# Read count data from CSV file
+countData <- as.matrix(read.csv("gene_count_matrix.csv", row.names="gene_id"))
+
+# View the count data
+View(countData)
+
+# Read phenotype data from TXT file
+colData <- read.csv("phenotype.txt", sep="\t", row.names=1)
+
+# View the phenotype data
+View(colData)
+
+# Check if all row names in phenotype data are present in count data
+all(rownames(colData) %in% colnames(countData))
+
+# Subset count data using row names from phenotype data
+countData <- countData[, rownames(colData)]
+
+# Check if row names in phenotype data match column names in count data
+all(rownames(colData) == colnames(countData))
+
+# Create DESeqDataSet object
+dds <- DESeqDataSetFromMatrix(countData = countData,
+                              colData = colData,
+                              design = ~ Condition)
+
+# View the DESeqDataSet object
+View(dds)
+
+# Run DESeq
+dds <- DESeq(dds)
+
+# Get differential expression results
+res <- results(dds)
+
+# View the results
+View(res)
+
+# Order the results by adjusted p-value
+(resOrdered <- res[order(res$padj), ])
+
+# View the ordered results
+View(resOrdered)
+
+# Load ggplot2 library
+library(ggplot2)
+
+# Create a volcano plot
+volcano_plot <- ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj))) +
+  geom_point(color = ifelse(res_df$log2FoldChange > 2 & res_df$padj < 0.05, "red", "black")) +
+  xlim(c(-6, 6)) + ylim(c(0, 20)) +
+  labs(x = "log2 Fold Change", y = "-log10(Adjusted p-value)") +
+  ggtitle("Volcano Plot")
+
+# Display the volcano plot
+print(volcano_plot)
+
+# Load pheatmap library
+library(pheatmap)
+
+# Subset the top differentially expressed genes for heatmap
+top_genes <- resOrdered[1:100, ]
+
+# Create a heatmap
+heatmap_plot <- pheatmap(assay(dds)[rownames(top_genes), ], show_rownames = FALSE)
+
+# Display the heatmap
+print(heatmap_plot)
+
+# Load ggplot2 library (already loaded above)
+
+# Extract necessary information from DESeqResults object
+res_df <- as.data.frame(res)
+res_df$log2FoldChange <- as.numeric(res_df$log2FoldChange)
+res_df$padj <- as.numeric(res_df$padj)
+
+# Create an MA plot
+ma_plot <- ggplot(res_df, aes(x = baseMean, y = log2FoldChange)) +
+  geom_point(color = ifelse(res_df$padj < 0.05, "red", "black")) +
+  labs(x = "Average Expression", y = "log2 Fold Change") +
+  ggtitle("MA Plot")
+
+# Display the MA plot
+print(ma_plot)
+
